@@ -1,20 +1,14 @@
-# WireGuard Docker Tunnel to SOCKS5 Server
+# WireGuard to SOCKS5/HTTP Proxy Docker Image
 
-Convers WireGuard connection to SOCKS5 server in Docker. This allows you to have multiple WireGuard to SOCKS5 proxies in different containers and expose to different host ports.
+Convers WireGuard connection to SOCKS5/HTTP proxy in Docker. This allows you to have multiple proxies on different ports connecting to different WireGuard upstreams.
 
 Supports latest Docker for both Windows, Linux, and MacOS.
 
 ### Related Projects
 
--   [wireguard-socks5](https://hub.docker.com/r/curve25519xsalsa20poly1305/wireguard-socks5/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-wireguard-socks5)) - Expose a SOCKS5 proxy server on your host port to serve programs on your host machine that can connect to a WireGuard proxy.
--   [wireguard-aria2](https://hub.docker.com/r/curve25519xsalsa20poly1305/wireguard-aria2/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-wireguard-aria2)) - Extends wireguard-socks5 with aria2 support.
--   [openvpn-tunnel](https://hub.docker.com/r/curve25519xsalsa20poly1305/openvpn-tunnel/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-openvpn-tunnel)) - Wraps your program with OpenVPN network tunnel fully contained in Docker.
--   [openvpn-socks5](https://hub.docker.com/r/curve25519xsalsa20poly1305/openvpn-socks5/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-openvpn-socks5)) - Expose a SOCKS5 proxy server on your host port to serve programs on your host machine that can connect to a OpenVPN proxy.
--   [openvpn-aria2](https://hub.docker.com/r/curve25519xsalsa20poly1305/openvpn-aria2/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-openvpn-aria2)) - Extends openvpn-socks5 with aria2 support.
--   [shadowsocks-tunnel](https://hub.docker.com/r/curve25519xsalsa20poly1305/shadowsocks-tunnel/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-shadowsocks-tunnel)) - Wraps your program with Shadowsocks network tunnel fully contained in Docker. Also exposes SOCKS5 server to host machine.
--   [shadowsocks-aria2](https://hub.docker.com/r/curve25519xsalsa20poly1305/shadowsocks-aria2/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-shadowsocks-aria2)) - Extends `shadowsocks-tunnel` with `aria2` support.
--   [shadowsocksr-tunnel](https://hub.docker.com/r/curve25519xsalsa20poly1305/shadowsocksr-tunnel/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-shadowsocksr-tunnel)) - Wraps your program with ShadowsocksR network tunnel fully contained in Docker. Also exposes SOCKS5 server to host machine.
--   [shadowsocksr-aria2](https://hub.docker.com/r/curve25519xsalsa20poly1305/shadowsocksr-aria2/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-shadowsocksr-aria2)) - Extends `shadowsocksr-tunnel` with `aria2` support.
+-   [OpenVPN](https://hub.docker.com/r/curve25519xsalsa20poly1305/openvpn/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-openvpn))
+-   [WireGuard](https://hub.docker.com/r/curve25519xsalsa20poly1305/wireguard/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-wireguard))
+-   [Shadowsocks/ShadowsocksR](https://hub.docker.com/r/curve25519xsalsa20poly1305/shadowsocks/) ([GitHub](https://github.com/curve25519xsalsa20poly1305/docker-shadowsocks))
 
 ## What it does?
 
@@ -29,41 +23,79 @@ Supports latest Docker for both Windows, Linux, and MacOS.
         - `WIREGUARD_PEER_ENDPOINT`
     - Otherwise, it will generate a free Cloudflare Warp account and use that as a configuration.
 3. It starts the WireGuard client program to establish the VPN connection.
-4. It optionally runs the executable defined by `WIREGUARD_UP`` when the VPN connection is stable.
-5. It starts the SOCKS5 server and listen on container-scoped port 1080 on default. SOCKS5 authentication can be enabled with `SOCKS5_USER` and `SOCKS5_PASS` environment variables. `SOCKS5_PORT` can be used to change the default port.
-6. It optionally runs the executable defined by `SOCKS5_UP` when the SOCKS5 server is ready.
-7. It optionally runs the user specified CMD line from `docker run` positional arguments ([see Docker doc](https://docs.docker.com/engine/reference/run/#cmd-default-command-or-options)). The program will use the VPN connection inside the container.
-8. If user has provided CMD line, and `DAEMON_MODE` environment variable is not set to `true`, then after running the CMD line, it will shutdown the OpenVPN client and terminate the container.
+4. It optionally runs the executable defined by `WIREGUARD_UP` when the VPN connection is stable.
+5. It starts [3proxy](https://3proxy.ru/) server and listen on container-scoped port 1080 for SOCKS5 and 3128 for HTTP proxy on default. Proxy authentication can be enabled with `PROXY_USER` and `PROXY_PASS` environment variables. `SOCKS5_PROXY_PORT` and `HTTP_PROXY_PORT` can be used to change the default ports. For multi-user support, use sequence of `PROXY_USER_1`, `PROXY_PASS_1`, `PROXY_USER_2`, `PROXY_PASS_2`, etc.
+6. It optionally runs the executable defined by `PROXY_UP` when the proxy server is ready.
+7. If `ARIA2_PORT` is defined, it starts an aria2 JSON-RPC server on the port, and optionally runs the executable defined by `ARIA2_UP`.
+8. It optionally runs the user specified CMD line from `docker run` positional arguments ([see Docker doc](https://docs.docker.com/engine/reference/run/#cmd-default-command-or-options)). The program will use the VPN connection inside the container.
+9. If user has provided CMD line, and `DAEMON_MODE` environment variable is not set to `true`, then after running the CMD line, it will shutdown the OpenVPN client and terminate the container.
+
+## How to use?
+
+WireGuard connection options are specified through these container environment variables:
+
+-   `WIREGUARD_CONFIG` (Default: `""`) - WireGuard config path. When used, will override all following `WIREGUARD_` options.
+-   `WIREGUARD_INTERFACE_PRIVATE_KEY` (Default: `""`) - interface private key
+-   `WIREGUARD_INTERFACE_DNS` (Default: `"1.1.1.1"`) - interface DNS
+-   `WIREGUARD_INTERFACE_ADDRESS` (Default: `""`) - interface address
+-   `WIREGUARD_PEER_PUBLIC_KEY` (Default: `""`) - peer public key
+-   `WIREGUARD_PEER_ALLOWED_IPS` (Default: `"0.0.0.0/0"`) - peer allowed IPs
+-   `WIREGUARD_PEER_ENDPOINT` (Default: `""`) - peer endpoint
+-   `WIREGUARD_UP` (Default: `""`) - Optional command to be executed when WireGuard connection becomes stable
+
+Proxy server options are specified through these container environment variables:
+
+-   `SOCKS5_PROXY_PORT` (Default: `"1080"`) - SOCKS5 server listening port
+-   `HTTP_PROXY_PORT` (Default: `"3128"`) - HTTP proxy server listening port
+-   `PROXY_USER` (Default: `""`) - Proxy server authentication username
+-   `PROXY_PASS` (Default: `""`) - Proxy server authentication password
+-   `PROXY_USER_<N>` (Default: `""`) - The `N`-th username for multi-user proxy authentication. `N` starts from 1.
+-   `PROXY_PASS_<N>` (Default: `""`) - The `N`-th password for multi-user proxy authentication. `N` starts from 1.
+-   `PROXY_UP` (Default: `""`) - Optional command to be executed when proxy server becomes stable
+
+Arai2 options are specified through these container environment variables:
+
+-   `ARIA2_PORT` (Default: `""`) - JSON-RPC server listening port
+-   `ARIA2_PASS` (Default: `""`) - `--rpc-secret` password
+-   `ARIA2_PATH` (Default: `"."`) - The directory to store the downloaded file
+-   `ARIA2_ARGS` (Default: `""`) - BASH-style escaped command line to append to the `aria2c` command
+-   `ARIA2_UP` (Default: `""`) - Optional command to be executed when aria2 JSON-RPC server becomes stable
+
+Other container environment variables:
+
+-   `DAEMON_MODE` (Default: `"false"`) - force enter daemon mode when CMD line is specified
 
 ## Example with Warp
 
 ```bash
 
 # Unix
-SET NAME="mysocks5"
-PORT="7777"
-USER="myuser"
-PASS="mypass"
+SET NAME="wg"
+HTTP_PROXY_PORT="7777"
+SOCKS5_PROXY_PORT="8888"
+PROXY_USER="myuser"
+PROXY_PASS="mypass"
 docker run --name "${NAME}" -dit --rm \
     --device=/dev/net/tun --cap-add=NET_ADMIN --privileged \
-    -p "${PORT}":1080 \
-    -e SOCKS5_USER="${USER}" \
-    -e SOCKS5_PASS="${PASS}" \
-    curve25519xsalsa20poly1305/wireguard-socks5 \
-    curl ifconfig.me
+    -p "${HTTP_PROXY_PORT}":3128 \
+    -p "${SOCKS5_PROXY_PORT}":1080 \
+    -e PROXY_USER="${PROXY_USER}" \
+    -e PROXY_PASS="${PROXY_PASS}" \
+    curve25519xsalsa20poly1305/wireguard
 
 # Windows
-SET NAME="mysocks5"
-SET PORT="7777"
-SET USER="myuser"
-SET PASS="mypass"
+SET NAME="wg"
+SET HTTP_PROXY_PORT="7777"
+SET SOCKS5_PROXY_PORT="8888"
+SET PROXY_USER="myuser"
+SET PROXY_PASS="mypass"
 docker run --name "%NAME%" -dit --rm ^
     --device=/dev/net/tun --cap-add=NET_ADMIN --privileged ^
-    -p "%PORT%":1080 ^
-    -e SOCKS5_USER="%USER%" ^
-    -e SOCKS5_PASS="%PASS%" ^
-    curve25519xsalsa20poly1305/wireguard-socks5 ^
-    curl ifconfig.me
+    -p "%HTTP_PROXY_PORT%":3128 ^
+    -p "%SOCKS5_PROXY_PORT%":1080 ^
+    -e PROXY_USER="%PROXY_USER%" ^
+    -e PROXY_PASS="%PROXY_PASS%" ^
+    curve25519xsalsa20poly1305/wireguard
 ```
 
 Then on your host machine test it with curl:
@@ -77,11 +109,11 @@ To stop the daemon, run this:
 
 ```bash
 # Unix
-NAME="mysocks5"
+NAME="wg"
 docker stop "${NAME}"
 
 # Windows
-SET NAME="mysocks5"
+SET NAME="wg"
 docker stop "%NAME%"
 ```
 
@@ -94,14 +126,14 @@ Prepare a WireGuard configuration at `./wg.conf`. NOTE: DO NOT use IPv6 related 
 docker run -it --rm \
     --device=/dev/net/tun --cap-add=NET_ADMIN --privileged \
     -v "${PWD}":/vpn:ro -e WIREGUARD_CONFIG=/vpn/wg.conf \
-    curve25519xsalsa20poly1305/wireguard-socks5 \
+    curve25519xsalsa20poly1305/wireguard \
     curl ifconfig.me
 
 # Windows
 docker run -it --rm ^
     --device=/dev/net/tun --cap-add=NET_ADMIN --privileged ^
     -v "%CD%":/vpn:ro -e WIREGUARD_CONFIG=/vpn/wg.conf ^
-    curve25519xsalsa20poly1305/wireguard-socks5 ^
+    curve25519xsalsa20poly1305/wireguard ^
     curl ifconfig.me
 ```
 
