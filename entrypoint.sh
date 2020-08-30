@@ -57,7 +57,6 @@ function gen_conf {
         echo "PrivateKey = ${WIREGUARD_INTERFACE_PRIVATE_KEY}" >> "$1"
         echo "DNS = ${WIREGUARD_INTERFACE_DNS}" >> "$1"
         echo "Address = ${WIREGUARD_INTERFACE_ADDRESS}" >> "$1"
-        echo "PostUp = wireguard-up.sh" >> "$1"
         echo >> "$1"
         echo "[Peer]" >> "$1"
         echo "PublicKey = ${WIREGUARD_PEER_PUBLIC_KEY}" >> "$1"
@@ -76,7 +75,6 @@ else
     gen_conf "${_WIREGUARD_CONFIG}"
 fi
 
-mkfifo /wireguard-fifo
 wg-quick up wg
 log "INFO" "Spawn WireGuard"
 
@@ -167,8 +165,6 @@ if [[ -n "${ARIA2_PORT}" ]]; then
     ARIA2_ENABLED="true"
 fi
 
-cat /wireguard-fifo > /dev/null
-rm -f /wireguard-fifo
 log "INFO" "WireGuard become stable"
 
 SUBNET=$(ip -o -f inet addr show dev eth0 | awk '{print $4}')

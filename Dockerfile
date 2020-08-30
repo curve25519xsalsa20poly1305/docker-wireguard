@@ -14,14 +14,12 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=curve25519xsalsa20poly1305/aria2:latest /usr/bin/aria2c /usr/bin/
 
 COPY entrypoint.sh   /usr/local/bin/
-COPY wireguard-up.sh /usr/local/bin/
 
 RUN echo "http://dl-4.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
     && apk add --no-cache bash curl wget wireguard-tools openresolv ip6tables \
         libgcc libstdc++ gnutls expat sqlite-libs c-ares openssl 3proxy \
     && chmod +x \
-        /usr/local/bin/entrypoint.sh \
-        /usr/local/bin/wireguard-up.sh
+        /usr/local/bin/entrypoint.sh
 
 # Wireguard Options
 ENV     WIREGUARD_CONFIG                ""

@@ -125,7 +125,6 @@ func main() {
 PrivateKey = ` + base64.StdEncoding.EncodeToString(sk[:32]) + `
 DNS = 1.1.1.1
 Address = ` + response.Result.Config.Interface.Addresses.V4 + `/32
-PostUp = wireguard-up.sh
 
 [Peer]
 PublicKey = ` + response.Result.Config.Peers[0].PublicKey + `
